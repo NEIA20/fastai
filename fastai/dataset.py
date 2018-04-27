@@ -63,15 +63,14 @@ def read_dirs(path, folder):
     '''
     Fetches name of all files in path in long form, and labels associated by extrapolation of directory names. 
     '''
-    labels, filenames, all_labels = [], [], []
+    fnames, lbls = [], []
     full_path = os.path.join(path, folder)
-    for label in sorted(os.listdir(full_path)):
-        if label not in ('.ipynb_checkpoints','.DS_Store'):
-            all_labels.append(label)
-            for fname in os.listdir(os.path.join(full_path, label)):
-                filenames.append(os.path.join(folder, label, fname))
-                labels.append(label)
-    return filenames, labels, all_labels
+    for lbl in sorted(os.listdir(full_path)):
+        if lbl not in ('.ipynb_checkpoints','.DS_Store'):
+            lbls.append(lbl)
+            for fname in os.listdir(os.path.join(full_path, lbl)):
+                fnames.append(os.path.join(folder, lbl, fname))
+    return fnames, lbls
 
 def n_hot(ids, c):
     '''
@@ -82,12 +81,11 @@ def n_hot(ids, c):
     return res
 
 def folder_source(path, folder):
-    fnames, lbls, all_labels = read_dirs(path, folder)
-    label2idx = {v:k for k,v in enumerate(all_labels)}
-    idxs = [label2idx[lbl] for lbl in lbls]
-    c = len(all_labels)
-    label_arr = np.array(idxs, dtype=int)
-    return fnames, label_arr, all_labels
+    fnames, lbls = read_dirs(path, folder)
+    lbl2idx = {v:k for k,v in enumerate(lbls)}
+    idxs = [lbl2idx[lbl] for lbl in lbls]
+    lbl_arr = np.array(idxs, dtype=int)
+    return fnames, lbl_arr, lbls
 
 def parse_csv_labels(fn, skip_header=True, cat_separator = ' '):
     """Parse filenames and label sets from a CSV file.
@@ -116,9 +114,9 @@ def parse_csv_labels(fn, skip_header=True, cat_separator = ' '):
     df.iloc[:,0] = df.iloc[:,0].str.split(cat_separator)
     return sorted(fnames), list(df.to_dict().values())[0]
 
-def nhot_labels(label2idx, csv_labels, fnames, c):
+def nhot_labels(lbl2idx, csv_labels, fnames, c):
     
-    all_idx = {k: n_hot([label2idx[o] for o in v], c)
+    all_idx = {k: n_hot([lbl2idx[o] for o in v], c)
                for k,v in csv_labels.items()}
     return np.stack([all_idx[o] for o in fnames])
 
@@ -133,8 +131,8 @@ def dict_source(folder, fnames, csv_labels, suffix='', continuous=False):
         label_arr = np.array([np.array(csv_labels[i]).astype(np.float32)
                 for i in fnames])
     else:
-        label2idx = {v:k for k,v in enumerate(all_labels)}
-        label_arr = nhot_labels(label2idx, csv_labels, fnames, len(all_labels))
+        lbl2idx = {v:k for k,v in enumerate(all_labels)}
+        label_arr = nhot_labels(lbl2idx, csv_labels, fnames, len(all_labels))
         is_single = np.all(label_arr.sum(axis=1)==1)
         if is_single: label_arr = np.argmax(label_arr, axis=1)
     return full_names, label_arr, all_labels
